@@ -1,78 +1,62 @@
-const express = require('express');
-const app = express();
-const Chuck  = require('chucknorris-io');
-const client = new Chuck();
+const express        = require('express');
+const app            = express();
 
-app.use(express.static('public'));
+const expressLayouts = require('express-ejs-layouts');
+const bodyParser     = require('body-parser');
+const path           = require('path');
 
+// https://www.npmjs.com/package/chucknorris-io
+const Chuck          = require('chucknorris-io');
+const client         = new Chuck();
 
-app.set("views", __dirname + '/views');
+app.use(expressLayouts);
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.set('views', path.join(__dirname, "views"));
 app.set('view engine', 'ejs');
+app.set('layout', 'layouts/main-layout');
 
 
-app.get('/', (request, response, next) => {
-    console.log("There are dead people here too");
-    response.send(`
-    <!doctype html>
-        <html>
-          <head>
-              <link rel="stylesheet" href="css/style.css">
-          </head>
-      <body>
-        <h1>I see dead people</h1> 
-      </body>
-    </html> 
-    `)
-})
+// First iteration
+app.get("/", (req, res) => {
+  res.redirect('/random');
+});
 
-app.get('/random', (request, response, next) => {
-    console.log("There are dead people in random too");
-    response.send(`
-    <!doctype html>
-        <html>
-          <head>
-              <link rel="stylesheet" href="css/style.css">
-          </head>
-      <body>
-        <h1>random dead people here</h1> 
-      </body>
-    </html> 
-    `)
-})
+app.get('/random', (req, res) => {
+  // Retrieve a random chuck joke
+  client.getRandomJoke().then(function (joke) {
+      res.render('index', {joke: joke.value});
+  });
+});
 
+// Second iteration
+app.get('/categories', (req, res) => {
+  client.getJokeCategories().then(function (categories) {
+    res.render('categories', {categories});
+  });
+});
 
-app.get('/categories', (request, response, next) => {
-    console.log("There are dead people in random too");
-    response.send(`
-    <!doctype html>
-        <html>
-          <head>
-              <link rel="stylesheet" href="css/style.css">
-          </head>
-      <body>
-        <h1>categories dead people here</h1> 
-      </body>
-    </html> 
-    `)
-})
+app.get('/categories/:category', (req, res) => {
+  let category = req.params.category;
 
+  client.getRandomJoke(category).then(function (joke) {
+    res.render('joke-by-category', {joke: joke.value, category});
+  });
+});
 
+// Third iteration
+app.post('/search', (req, res) => {
+  let keyword = req.body.keyword;
 
-app.get('/search', (request, response, next) => {
-    console.log("There are dead people in random too");
-    response.send(`
-    <!doctype html>
-        <html>
-          <head>
-              <link rel="stylesheet" href="css/style.css">
-          </head>
-      <body>
-        <h1>categories dead people here</h1> 
-      </body>
-    </html> 
-    `)
-})
+  client.search(keyword).then( (jokes) => {
+    let randomIndex = Math.floor(Math.random() * jokes.items.length -1);
+    let joke = jokes.items[randomIndex];
+
+    res.render('joke-by-search', {joke: joke.value, query: keyword} );
+  })
+});
 
 app.listen(3000, () => {
-    console.log("I see dead people");
-})
+  console.log("Listening on port 3000");
+});
